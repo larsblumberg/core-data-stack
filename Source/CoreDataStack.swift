@@ -11,19 +11,12 @@ import CoreData
 
 //TODO: Opensource, create CocoaPod "CoreDataStackSwift"
 public class CoreDataStack {
-    private static var _sharedInstance: CoreDataStack?
+    public static var modelName: String?
 
-    public static var sharedInstance: CoreDataStack {
-        get {
-            guard let sharedInstance = _sharedInstance else { fatalError("Call CoreDataStack.install() first") }
-            return sharedInstance
-        }
-    }
-
-    public static func install(modelName: String) {
-        guard _sharedInstance == nil else { fatalError("CoreDataStack already installed") }
-        _sharedInstance = CoreDataStack(modelName: modelName)
-    }
+    public static let sharedInstance: CoreDataStack = {
+        guard let modelName = modelName else { fatalError("CoreDataStack.modelName not set") }
+        return CoreDataStack(modelName: modelName)
+    }()
 
     private let modelName: String
     
