@@ -20,18 +20,18 @@ public class CoreDataStack {
 
     private let modelName: String
     
-    internal lazy var managedObjectContext: NSManagedObjectContext! = {
+    public lazy var managedObjectContext: NSManagedObjectContext! = {
         var managedObjectContext = NSManagedObjectContext(concurrencyType: .MainQueueConcurrencyType)
         managedObjectContext.persistentStoreCoordinator = self.persistentStoreCoordinator
         return managedObjectContext
     }()
     
-    internal lazy var managedObjectModel: NSManagedObjectModel = {
+    public lazy var managedObjectModel: NSManagedObjectModel = {
         let modelURL = NSBundle.mainBundle().URLForResource(self.modelName, withExtension: "momd")!
         return NSManagedObjectModel(contentsOfURL: modelURL)!
     }()
     
-    internal lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator! = {
+    public lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator! = {
         let storeURL = self.applicationDocumentsDirectory().URLByAppendingPathComponent(self.modelName + ".sqlite")
         
         // Enable for lightweight model migration
