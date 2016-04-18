@@ -32,8 +32,6 @@ public class CoreDataStack {
     }()
     
     public lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator! = {
-        let storeURL = self.applicationDocumentsDirectory().URLByAppendingPathComponent(self.modelName + ".sqlite")
-        
         // Enable for lightweight model migration
         var options = [String: AnyObject]()
         options[NSMigratePersistentStoresAutomaticallyOption] = true
@@ -43,7 +41,7 @@ public class CoreDataStack {
 
         var failureReason = "There was an error creating or loading the application's saved data."
         do {
-            try coordinator.addPersistentStoreWithType(NSSQLiteStoreType, configuration: nil, URL: storeURL, options: options)
+            try coordinator.addPersistentStoreWithType(NSSQLiteStoreType, configuration: nil, URL: self.storeURL, options: options)
         } catch {
             // Report any error we got.
             var dict = [String: AnyObject]()
@@ -60,6 +58,8 @@ public class CoreDataStack {
         
         return coordinator
     }()
+
+    private lazy var storeURL: NSURL = self.applicationDocumentsDirectory().URLByAppendingPathComponent(self.modelName + ".sqlite")
     
     private init(modelName: String) {
         self.modelName = modelName
@@ -132,5 +132,9 @@ public class CoreDataStack {
         
         // Merge thread-related context into the main context
         self.managedObjectContext.mergeChangesFromContextDidSaveNotification(notification)
+    }
+
+    public func removeDatabase() throws {
+        try NSFileManager.defaultManager().removeItemAtURL(storeURL)
     }
 }
