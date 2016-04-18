@@ -95,9 +95,7 @@ public class CoreDataStack {
     }
     
     internal func saveContext(context: NSManagedObjectContext!) {
-        if !context.hasChanges {
-            return
-        }
+        guard context.hasChanges else { return }
         
         do {
             try context.save()
@@ -111,19 +109,16 @@ public class CoreDataStack {
 
     // Merging other object contexts into the main context
     @objc private func managedObjectContextDidSaveNotification(notification: NSNotification!) {
-        let notificationManagedObjectContext = notification.object as? NSManagedObjectContext
-        
-        if (notificationManagedObjectContext == self.managedObjectContext) {
-            // No need to merge the main context into itself
-            return;
-        }
-        if (notificationManagedObjectContext?.persistentStoreCoordinator != self.persistentStoreCoordinator) {
-            // No need to merge a context from other store coordinators than ours
-            return;
-        }
-        
+        guard let notificationManagedObjectContext = notification.object as? NSManagedObjectContext else { return }
+
+        // No need to merge the main context into itself
+        guard notificationManagedObjectContext != self.managedObjectContext else { return }
+
+        // No need to merge a context from other store coordinators than ours
+        guard notificationManagedObjectContext.persistentStoreCoordinator == self.persistentStoreCoordinator else { return }
+
+        // Make sure to perform the merge operation on the main thread
         if (!NSThread.isMainThread()) {
-            // Make sure to perform the merge operation on the main thread
             dispatch_async(dispatch_get_main_queue()) {
                 self.managedObjectContextDidSaveNotification(notification)
             }
