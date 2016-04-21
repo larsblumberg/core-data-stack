@@ -19,24 +19,24 @@ public class CoreDataStack {
     }()
 
     private let modelName: String
-    
+
     public lazy var managedObjectContext: NSManagedObjectContext! = {
         var managedObjectContext = NSManagedObjectContext(concurrencyType: .MainQueueConcurrencyType)
         managedObjectContext.persistentStoreCoordinator = self.persistentStoreCoordinator
         return managedObjectContext
     }()
-    
+
     public lazy var managedObjectModel: NSManagedObjectModel = {
         let modelURL = NSBundle.mainBundle().URLForResource(self.modelName, withExtension: "momd")!
         return NSManagedObjectModel(contentsOfURL: modelURL)!
     }()
-    
+
     public lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator! = {
         // Enable for lightweight model migration
         var options = [String: AnyObject]()
         options[NSMigratePersistentStoresAutomaticallyOption] = true
         options[NSInferMappingModelAutomaticallyOption] = true
-        
+
         let coordinator = NSPersistentStoreCoordinator(managedObjectModel: self.managedObjectModel)
 
         var failureReason = "There was an error creating or loading the application's saved data."
@@ -47,7 +47,7 @@ public class CoreDataStack {
             var dict = [String: AnyObject]()
             dict[NSLocalizedDescriptionKey] = "Failed to initialize the application's saved data"
             dict[NSLocalizedFailureReasonErrorKey] = failureReason
-            
+
             dict[NSUnderlyingErrorKey] = error as NSError
             let wrappedError = NSError(domain: "YOUR_ERROR_DOMAIN", code: 9999, userInfo: dict)
             // TODO: Replace this with code to handle the error appropriately.
@@ -55,24 +55,24 @@ public class CoreDataStack {
             NSLog("Unresolved error \(wrappedError), \(wrappedError.userInfo)")
             abort()
         }
-        
+
         return coordinator
     }()
 
     private lazy var storeURL: NSURL = self.applicationDocumentsDirectory().URLByAppendingPathComponent(self.modelName + ".sqlite")
-    
+
     private init(modelName: String) {
         self.modelName = modelName
         NSNotificationCenter.defaultCenter().addObserver(self, selector: "managedObjectContextDidSaveNotification:", name: NSManagedObjectContextDidSaveNotification, object: nil)
     }
-    
+
     private func applicationDocumentsDirectory() -> NSURL! {
         let urls = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)
         return urls[urls.count - 1]
     }
-    
+
     //MARK: Support for managed object context access from different threads
-    
+
     func currentContext() -> NSManagedObjectContext! {
         if NSThread.isMainThread() {
             return self.managedObjectContext
@@ -89,14 +89,14 @@ public class CoreDataStack {
         }
         return context
     }
-    
+
     public func saveCurrentContext() {
         saveContext(currentContext())
     }
-    
+
     internal func saveContext(context: NSManagedObjectContext!) {
         guard context.hasChanges else { return }
-        
+
         do {
             try context.save()
         } catch let error as NSError {
@@ -124,12 +124,16 @@ public class CoreDataStack {
             }
             return;
         }
-        
+
         // Merge thread-related context into the main context
         self.managedObjectContext.mergeChangesFromContextDidSaveNotification(notification)
     }
 
-    public func removeDatabase() throws {
+    public func resetDatabase() throws {
+        //TODO: If the persistentStoreCoordinator had been already created, it must also be reset
+        let path = storeURL.path!
+        guard NSFileManager.defaultManager().fileExistsAtPath(path) else { return }
         try NSFileManager.defaultManager().removeItemAtURL(storeURL)
+        try NSFileManager.defaultManager().createFileAtPath(path, contents: nil, attributes: nil)
     }
 }
