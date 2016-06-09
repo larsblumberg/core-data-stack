@@ -16,7 +16,7 @@ import CoreData
     - Automatically removes property observers when the managed object turns into a fault
 */
 public class IntrospectiveManagedObject : NSManagedObject {
-    typealias PropertyClosure = () -> ()
+    typealias PropertyClosure = (oldValue: NSObject?, newValue: NSObject?) -> ()
     private var observedProperties = [String : PropertyClosure]()
 
     public override func awakeFromInsert() {
@@ -40,12 +40,12 @@ public class IntrospectiveManagedObject : NSManagedObject {
     }
 
     public override func willTurnIntoFault() {
-        observedProperties.forEach { removePropertyObserver($0.0) }
+        observedProperties.keys.forEach { removePropertyObserver($0) }
         observedProperties = [:]
         super.willTurnIntoFault()
     }
 
-    public func observeProperty(property: String, handler: () -> ()) {
+    public func observeProperty(property: String, handler: (oldValue: NSObject?, newValue: NSObject?) -> ()) {
         removePropertyObserver(property)
         observedProperties[property] = handler
         addObserver(self, forKeyPath: property, options: [.Old, .New], context: &observerContext)
@@ -61,8 +61,8 @@ public class IntrospectiveManagedObject : NSManagedObject {
         guard context == &observerContext else { return }
         guard let
             property = keyPath,
-            closure = observedProperties[property] else { return }
-        closure()
+            handler = observedProperties[property] else { return }
+        handler(oldValue: change?[NSKeyValueChangeOldKey] as? NSObject, newValue: change?[NSKeyValueChangeNewKey] as? NSObject)
     }
 }
 
