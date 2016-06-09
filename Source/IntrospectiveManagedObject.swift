@@ -58,7 +58,10 @@ public class IntrospectiveManagedObject : NSManagedObject {
     }
 
     public override func observeValueForKeyPath(keyPath: String?, ofObject object: AnyObject?, change: [String : AnyObject]?, context: UnsafeMutablePointer<Void>) {
-        guard context == &observerContext else { return }
+        guard context == &observerContext else {
+            super.observeValueForKeyPath(keyPath, ofObject: object, change: change, context: context)
+            return
+        }
         guard let
             property = keyPath,
             handler = observedProperties[property] else { return }
