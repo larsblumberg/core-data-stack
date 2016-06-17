@@ -9,16 +9,17 @@
 import Foundation
 import CoreData
 
-//TODO: Opensource, create CocoaPod "CoreDataStackSwift"
 public class CoreDataStack {
     public static var modelName: String?
+    public static var storeDirectoryURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).last!
 
     public static let sharedInstance: CoreDataStack = {
         guard let modelName = modelName else { fatalError("CoreDataStack.modelName not set") }
-        return CoreDataStack(modelName: modelName)
+        return CoreDataStack(modelName: modelName, storeDirectoryURL: storeDirectoryURL)
     }()
 
     private let modelName: String
+    private let storeDirectoryURL: NSURL
 
     public lazy var managedObjectContext: NSManagedObjectContext! = {
         var managedObjectContext = NSManagedObjectContext(concurrencyType: .MainQueueConcurrencyType)
@@ -59,16 +60,12 @@ public class CoreDataStack {
         return coordinator
     }()
 
-    private lazy var storeURL: NSURL = self.applicationDocumentsDirectory().URLByAppendingPathComponent(self.modelName + ".sqlite")
+    private lazy var storeURL: NSURL = self.storeDirectoryURL.URLByAppendingPathComponent(self.modelName + ".sqlite")
 
-    private init(modelName: String) {
+    private init(modelName: String, storeDirectoryURL: NSURL) {
         self.modelName = modelName
+        self.storeDirectoryURL = storeDirectoryURL
         NSNotificationCenter.defaultCenter().addObserver(self, selector: "managedObjectContextDidSaveNotification:", name: NSManagedObjectContextDidSaveNotification, object: nil)
-    }
-
-    private func applicationDocumentsDirectory() -> NSURL! {
-        let urls = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask)
-        return urls[urls.count - 1]
     }
 
     //MARK: Support for managed object context access from different threads
