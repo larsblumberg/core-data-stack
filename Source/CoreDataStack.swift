@@ -18,6 +18,8 @@ public class CoreDataStack {
         return CoreDataStack(modelName: modelName, storeDirectoryURL: storeDirectoryURL)
     }()
 
+    public weak var delegate: CoreDataStackDelegate?
+
     private let modelName: String
     private let storeDirectoryURL: NSURL
 
@@ -100,7 +102,7 @@ public class CoreDataStack {
             //TODO: Replace this implementation with code to handle the error appropriately.
             // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
             print("Unresolved error \(error), \(error.userInfo)")
-            abort();
+            delegate?.coreDataStack(self, didFailSaveWithError: error)
         }
     }
 
@@ -133,4 +135,8 @@ public class CoreDataStack {
         try NSFileManager.defaultManager().removeItemAtURL(storeURL)
         try NSFileManager.defaultManager().createFileAtPath(path, contents: nil, attributes: nil)
     }
+}
+
+public protocol CoreDataStackDelegate: class {
+    func coreDataStack(stack: CoreDataStack, didFailSaveWithError error: NSError)
 }
