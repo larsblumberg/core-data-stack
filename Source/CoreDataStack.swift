@@ -44,6 +44,7 @@ public class CoreDataStack {
 
         var failureReason = "There was an error creating or loading the application's saved data."
         do {
+            try NSFileManager.defaultManager().createDirectoryAtURL(self.storeURL.URLByDeletingLastPathComponent!, withIntermediateDirectories: true, attributes: nil)
             try coordinator.addPersistentStoreWithType(NSSQLiteStoreType, configuration: nil, URL: self.storeURL, options: options)
         } catch {
             // Report any error we got.
