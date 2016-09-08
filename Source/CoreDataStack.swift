@@ -11,16 +11,22 @@ import CoreData
 
 public class CoreDataStack {
     public static var modelName: String?
+    #if os(tvOS)
+    public static var storeType: String = NSInMemoryStoreType
+    #else
+    public static var storeType: String = NSSQLiteStoreType
+    #endif
     public static var storeDirectoryURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).last!
 
     public static let sharedInstance: CoreDataStack = {
         guard let modelName = modelName else { fatalError("CoreDataStack.modelName not set") }
-        return CoreDataStack(modelName: modelName, storeDirectoryURL: storeDirectoryURL)
+        return CoreDataStack(modelName: modelName, storeType: storeType, storeDirectoryURL: storeDirectoryURL)
     }()
 
     public weak var delegate: CoreDataStackDelegate?
 
     private let modelName: String
+    private let storeType: String
     private let storeDirectoryURL: NSURL
 
     public lazy var managedObjectContext: NSManagedObjectContext! = {
@@ -45,7 +51,7 @@ public class CoreDataStack {
         var failureReason = "There was an error creating or loading the application's saved data."
         do {
             try NSFileManager.defaultManager().createDirectoryAtURL(self.storeURL.URLByDeletingLastPathComponent!, withIntermediateDirectories: true, attributes: nil)
-            try coordinator.addPersistentStoreWithType(NSSQLiteStoreType, configuration: nil, URL: self.storeURL, options: options)
+            try coordinator.addPersistentStoreWithType(storeType, configuration: nil, URL: self.storeURL, options: options)
         } catch {
             // Report any error we got.
             var dict = [String: AnyObject]()
@@ -63,10 +69,11 @@ public class CoreDataStack {
         return coordinator
     }()
 
-    private lazy var storeURL: NSURL = self.storeDirectoryURL.URLByAppendingPathComponent(self.modelName + ".sqlite")
+    private lazy var storeURL: NSURL = self.storeDirectoryURL.URLByAppendingPathComponent(self.modelName + ".sqlite")!
 
-    private init(modelName: String, storeDirectoryURL: NSURL) {
+    private init(modelName: String, storeType: String, storeDirectoryURL: NSURL) {
         self.modelName = modelName
+        self.storeType = storeType
         self.storeDirectoryURL = storeDirectoryURL
         NSNotificationCenter.defaultCenter().addObserver(self, selector: "managedObjectContextDidSaveNotification:", name: NSManagedObjectContextDidSaveNotification, object: nil)
     }
