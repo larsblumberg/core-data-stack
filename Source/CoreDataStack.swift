@@ -69,7 +69,11 @@ public class CoreDataStack {
         return coordinator
     }()
 
+    #if swift(>=2.3)
     private lazy var storeURL: NSURL = self.storeDirectoryURL.URLByAppendingPathComponent(self.modelName + ".sqlite")!
+    #else
+    private lazy var storeURL: NSURL = self.storeDirectoryURL.URLByAppendingPathComponent(self.modelName + ".sqlite")
+    #endif
 
     private init(modelName: String, storeType: String, storeDirectoryURL: NSURL) {
         self.modelName = modelName
