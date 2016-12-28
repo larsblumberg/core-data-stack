@@ -19,11 +19,11 @@ public class ManagedObjectChangeObserver {
         } } }
     private var observedSetCopy: Set<NSManagedObject>?
     private var observedType: NSManagedObject.Type?
-    private lazy var observedTypeFilter: (NSManagedObject) -> Bool = {(object) -> Bool in return object.isKindOfClass(self.observedType!)}
+    private lazy var observedTypeFilter: (NSManagedObject) -> Bool = {(object) -> Bool in return object.isKind(of: self.observedType!)}
 
-    private var onObjectsChange: ((updatedObjects:  Set<NSManagedObject>, deletedObjects: Set<NSManagedObject>) -> ())?
-    private var onSetChange:     ((insertedObjects: Set<NSManagedObject>, removedObjects: Set<NSManagedObject>, updatedObjects: Set<NSManagedObject>) -> ())?
-    private var onTypeChange:    ((insertedObjects: Set<NSManagedObject>, deletedObjects: Set<NSManagedObject>) -> ())?
+    private var onObjectsChange: ((_ updatedObjects:  Set<NSManagedObject>, _ deletedObjects: Set<NSManagedObject>) -> ())?
+    private var onSetChange:     ((_ insertedObjects: Set<NSManagedObject>, _ removedObjects: Set<NSManagedObject>, _ updatedObjects: Set<NSManagedObject>) -> ())?
+    private var onTypeChange:    ((_ insertedObjects: Set<NSManagedObject>, _ deletedObjects: Set<NSManagedObject>) -> ())?
 
     public init() {
     }
@@ -32,29 +32,29 @@ public class ManagedObjectChangeObserver {
         removeObserver()
     }
 
-    public func observe(managedObjects managedObjects: [NSManagedObject], onChange: (changedObjects: Set<NSManagedObject>, deletedObjects: Set<NSManagedObject>) -> ()) {
+    public func observe(managedObjects: [NSManagedObject], onChange: @escaping (_ changedObjects: Set<NSManagedObject>, _ deletedObjects: Set<NSManagedObject>) -> ()) {
         reset()
         observedObjects = Set(managedObjects)
         self.onObjectsChange = onChange
         observe()
     }
 
-    public func observe(managedObject managedObject: NSManagedObject, onChange: (changedObjects: Set<NSManagedObject>, deletedObjects: Set<NSManagedObject>) -> ()) {
+    public func observe(managedObject: NSManagedObject, onChange: @escaping (_ changedObjects: Set<NSManagedObject>, _ deletedObjects: Set<NSManagedObject>) -> ()) {
         observe(managedObjects: [managedObject], onChange: onChange)
     }
 
-    public func observe(set set: NSSet, onChange: (insertedObjects: Set<NSManagedObject>, removedObjects: Set<NSManagedObject>, changedObjects: Set<NSManagedObject>) -> ()) {
+    public func observe(set: NSSet, onChange: @escaping (_ insertedObjects: Set<NSManagedObject>, _ removedObjects: Set<NSManagedObject>, _ changedObjects: Set<NSManagedObject>) -> ()) {
         reset()
         observedNSSet = set
         self.onSetChange = onChange
         observe()
     }
 
-    public func observe<T: NSManagedObject>(type type: T.Type, onChange: ((insertedObjects: Set<T>, deletedObjects: Set<T>) -> ())) {
+    public func observe<T: NSManagedObject>(type: T.Type, onChange: @escaping ((_ insertedObjects: Set<T>, _ deletedObjects: Set<T>) -> ())) {
         reset()
         observedType = type
         self.onTypeChange = { insertedObjects, deletedObjects in
-            onChange(insertedObjects: insertedObjects as! Set<T>, deletedObjects: deletedObjects as! Set<T>)
+            onChange(insertedObjects as! Set<T>, deletedObjects as! Set<T>)
         }
         observe()
     }
@@ -71,43 +71,43 @@ public class ManagedObjectChangeObserver {
     }
 
     private func observe() {
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "didChangeManagedObjectContext:", name: NSManagedObjectContextObjectsDidChangeNotification, object: CoreDataStack.sharedInstance.currentContext())
+        NotificationCenter.default.addObserver(self, selector: #selector(ManagedObjectChangeObserver.didChangeManagedObjectContext(_:)), name: NSNotification.Name.NSManagedObjectContextObjectsDidChange, object: CoreDataStack.sharedInstance.currentContext())
     }
 
     public func removeObserver() {
-        NSNotificationCenter.defaultCenter().removeObserver(self)
+        NotificationCenter.default.removeObserver(self)
     }
 
-    @objc private func didChangeManagedObjectContext(notification: NSNotification) {
+    @objc private func didChangeManagedObjectContext(_ notification: Notification) {
         let updatedObjects = {(notification.userInfo?[NSUpdatedObjectsKey] as? NSSet)?.allObjects as? [NSManagedObject] ?? []}
         let deletedObjects = {(notification.userInfo?[NSDeletedObjectsKey] as? NSSet)?.allObjects as? [NSManagedObject] ?? []}
         let insertedObjects = {(notification.userInfo?[NSInsertedObjectsKey] as? NSSet)?.allObjects as? [NSManagedObject] ?? []}
 
         // Detect if observed objects got changed or deleted
-        if let observedObjects = self.observedObjects, onChange = self.onObjectsChange {
-            let updatedObjects = observedObjects.intersect(updatedObjects())
-            let deletedObjects = observedObjects.intersect(deletedObjects())
+        if let observedObjects = self.observedObjects, let onChange = self.onObjectsChange {
+            let updatedObjects = observedObjects.intersection(updatedObjects())
+            let deletedObjects = observedObjects.intersection(deletedObjects())
             if updatedObjects.count + deletedObjects.count > 0 {
-                onChange(updatedObjects: updatedObjects, deletedObjects: deletedObjects)
+                onChange(updatedObjects, deletedObjects)
             }
         }
         // Detect if observed set got changed
-        else if let observedSet = self.observedSet, observedSetCopy = self.observedSetCopy, onChange = self.onSetChange {
-            let insertedObjects = observedSet.subtract(observedSetCopy)
-            let removedObjects = observedSetCopy.subtract(observedSet)
+        else if let observedSet = self.observedSet, let observedSetCopy = self.observedSetCopy, let onChange = self.onSetChange {
+            let insertedObjects = observedSet.subtracting(observedSetCopy)
+            let removedObjects = observedSetCopy.subtracting(observedSet)
             let updatedObjects = Set(observedSet.filter { updatedObjects().contains($0) })
             if insertedObjects.count + removedObjects.count + updatedObjects.count > 0 {
-                onChange(insertedObjects: insertedObjects, removedObjects: removedObjects, updatedObjects: updatedObjects)
+                onChange(insertedObjects, removedObjects, updatedObjects)
             }
             // Remember current state of set in order to detect future changes
             self.observedSetCopy = observedSet
         }
         // Detect if objects of observed type got inserted or deleted
-        else if let _ = self.observedType, onChange = self.onTypeChange {
+        else if let _ = self.observedType, let onChange = self.onTypeChange {
             let insertedObjects = Set(insertedObjects().filter(observedTypeFilter))
             let deletedObjects = Set(deletedObjects().filter(observedTypeFilter))
             if insertedObjects.count + deletedObjects.count > 0 {
-                onChange(insertedObjects: insertedObjects, deletedObjects: deletedObjects)
+                onChange(insertedObjects, deletedObjects)
             }
         }
     }

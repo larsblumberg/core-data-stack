@@ -10,14 +10,9 @@ import Foundation
 import CoreData
 
 public extension NSManagedObjectContext {
-    public func fetchAllObjectsForEntityName(entityName: String!) -> [NSManagedObject]! {
-        let fetchRequest = NSFetchRequest(entityName: entityName)
-        return try! self.executeFetchRequest(fetchRequest) as! [NSManagedObject]
-    }
-    
-    public func fetchAllObjectsForEntityName(entityName: String!, predicate: NSPredicate!) -> [NSManagedObject]! {
-        let fetchRequest = NSFetchRequest(entityName: entityName)
+    public func fetchAllObjects(forEntityName entityName: String, predicate: NSPredicate? = nil) -> [NSManagedObject]! {
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
         fetchRequest.predicate = predicate
-        return try! self.executeFetchRequest(fetchRequest) as! [NSManagedObject]
+        return try! self.fetch(fetchRequest) as! [NSManagedObject]
     }
 }

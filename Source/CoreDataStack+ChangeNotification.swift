@@ -9,11 +9,11 @@
 import CoreData
 
 public extension CoreDataStack {
-    func postChangeNotification(managedObject managedObject: NSManagedObject) {
+    func postChangeNotification(managedObject: NSManagedObject) {
         postChangeNotification(managedObjects: [managedObject])
     }
     
-    func postChangeNotification(managedObjects managedObjects: [NSManagedObject]) {
-        NSNotificationCenter.defaultCenter().postNotificationName(NSManagedObjectContextObjectsDidChangeNotification, object: currentContext(), userInfo: [NSUpdatedObjectsKey: Set(managedObjects) as NSSet])
+    func postChangeNotification(managedObjects: [NSManagedObject]) {
+        NotificationCenter.default.post(name: NSNotification.Name.NSManagedObjectContextObjectsDidChange, object: currentContext(), userInfo: [NSUpdatedObjectsKey: Set(managedObjects) as NSSet])
     }
 }

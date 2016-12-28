@@ -15,57 +15,60 @@ import CoreData
     - Call `removePropertyObserver(property: String)` to stop observing.
     - Automatically removes property observers when the managed object turns into a fault
 */
-public class IntrospectiveManagedObject : NSManagedObject {
-    typealias PropertyClosure = (oldValue: NSObject?, newValue: NSObject?) -> ()
-    private var observedProperties = [String : PropertyClosure]()
+open class IntrospectiveManagedObject : NSManagedObject {
+    typealias PropertyClosure = (_ oldValue: NSObject?, _ newValue: NSObject?) -> ()
+    fileprivate var observedProperties = [String : PropertyClosure]()
 
-    public override func awakeFromInsert() {
+    open override func awakeFromInsert() {
         super.awakeFromInsert()
         didAwake()
     }
 
-    public override func awakeFromFetch() {
+    open override func awakeFromFetch() {
         super.awakeFromFetch()
         didAwake()
     }
 
-    public override func awakeFromSnapshotEvents(flags: NSSnapshotEventType) {
-        super.awakeFromSnapshotEvents(flags)
+    open override func awake(fromSnapshotEvents flags: NSSnapshotEventType) {
+        super.awake(fromSnapshotEvents: flags)
         didAwake()
     }
 
     /// Automatically called by `awakeFromInsert()`, `awakeFromFetch()` or `awakeFromSnapshotEvents(flags)`. Good place for calls to `observeProperty(property)`
-    public func didAwake() {
+    open func didAwake() {
         // Can be overriden by subclasses to make calls to observeProperty
     }
 
-    public override func willTurnIntoFault() {
+    open override func willTurnIntoFault() {
         observedProperties.keys.forEach { removePropertyObserver($0) }
         observedProperties = [:]
         super.willTurnIntoFault()
     }
 
-    public func observeProperty(property: String, handler: (oldValue: NSObject?, newValue: NSObject?) -> ()) {
+    public func observeProperty(_ property: String, handler: @escaping (_ oldValue: NSObject?, _ newValue: NSObject?) -> ()) {
         removePropertyObserver(property)
         observedProperties[property] = handler
-        addObserver(self, forKeyPath: property, options: [.Old, .New], context: &observerContext)
+        addObserver(self, forKeyPath: property, options: [.old, .new], context: &observerContext)
     }
 
-    public func removePropertyObserver(property: String) {
+    public func removePropertyObserver(_ property: String) {
         guard observedProperties.keys.contains(property) else { return }
-        observedProperties.removeValueForKey(property)
+        observedProperties.removeValue(forKey: property)
         removeObserver(self, forKeyPath: property)
     }
 
-    public override func observeValueForKeyPath(keyPath: String?, ofObject object: AnyObject?, change: [String : AnyObject]?, context: UnsafeMutablePointer<Void>) {
+    open override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         guard context == &observerContext else {
-            super.observeValueForKeyPath(keyPath, ofObject: object, change: change, context: context)
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
             return
         }
-        guard let
-            property = keyPath,
-            handler = observedProperties[property] else { return }
-        handler(oldValue: change?[NSKeyValueChangeOldKey] as? NSObject, newValue: change?[NSKeyValueChangeNewKey] as? NSObject)
+        guard
+            let property = keyPath,
+            let handler = observedProperties[property]
+        else {
+            return
+        }
+        handler(change?[NSKeyValueChangeKey.oldKey] as? NSObject, change?[NSKeyValueChangeKey.newKey] as? NSObject)
     }
 }
 

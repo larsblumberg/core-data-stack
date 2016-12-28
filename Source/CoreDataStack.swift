@@ -16,7 +16,7 @@ public class CoreDataStack {
     #else
     public static var storeType: String = NSSQLiteStoreType
     #endif
-    public static var storeDirectoryURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).last!
+    public static var storeDirectoryURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last!
 
     public static let sharedInstance: CoreDataStack = {
         guard let modelName = modelName else { fatalError("CoreDataStack.modelName not set") }
@@ -27,36 +27,37 @@ public class CoreDataStack {
 
     private let modelName: String
     private let storeType: String
-    private let storeDirectoryURL: NSURL
+    private let storeDirectoryURL: URL
 
     public lazy var managedObjectContext: NSManagedObjectContext! = {
-        var managedObjectContext = NSManagedObjectContext(concurrencyType: .MainQueueConcurrencyType)
+        var managedObjectContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
         managedObjectContext.persistentStoreCoordinator = self.persistentStoreCoordinator
         return managedObjectContext
     }()
 
     public lazy var managedObjectModel: NSManagedObjectModel = {
-        let modelURL = NSBundle.mainBundle().URLForResource(self.modelName, withExtension: "momd")!
-        return NSManagedObjectModel(contentsOfURL: modelURL)!
+        let modelURL = Bundle.main.url(forResource: self.modelName, withExtension: "momd")!
+        return NSManagedObjectModel(contentsOf: modelURL)!
     }()
 
     public lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator! = {
         // Enable for lightweight model migration
         var options = [String: AnyObject]()
-        options[NSMigratePersistentStoresAutomaticallyOption] = true
-        options[NSInferMappingModelAutomaticallyOption] = true
+        options[NSMigratePersistentStoresAutomaticallyOption] = true as AnyObject?
+        options[NSInferMappingModelAutomaticallyOption] = true as AnyObject?
 
         let coordinator = NSPersistentStoreCoordinator(managedObjectModel: self.managedObjectModel)
 
         var failureReason = "There was an error creating or loading the application's saved data."
         do {
-            try NSFileManager.defaultManager().createDirectoryAtURL(self.storeURL.URLByDeletingLastPathComponent!, withIntermediateDirectories: true, attributes: nil)
-            try coordinator.addPersistentStoreWithType(storeType, configuration: nil, URL: self.storeURL, options: options)
-        } catch {
+            try FileManager.default.createDirectory(at: self.storeURL.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: nil)
+            try coordinator.addPersistentStore(ofType: storeType, configurationName: nil, at: self.storeURL as URL, options: options)
+        }
+        catch {
             // Report any error we got.
             var dict = [String: AnyObject]()
-            dict[NSLocalizedDescriptionKey] = "Failed to initialize the application's saved data"
-            dict[NSLocalizedFailureReasonErrorKey] = failureReason
+            dict[NSLocalizedDescriptionKey] = "Failed to initialize the application's saved data" as AnyObject?
+            dict[NSLocalizedFailureReasonErrorKey] = failureReason as AnyObject?
 
             dict[NSUnderlyingErrorKey] = error as NSError
             let wrappedError = NSError(domain: "YOUR_ERROR_DOMAIN", code: 9999, userInfo: dict)
@@ -69,31 +70,27 @@ public class CoreDataStack {
         return coordinator
     }()
 
-    #if swift(>=2.3)
-    private lazy var storeURL: NSURL = self.storeDirectoryURL.URLByAppendingPathComponent(self.modelName + ".sqlite")!
-    #else
-    private lazy var storeURL: NSURL = self.storeDirectoryURL.URLByAppendingPathComponent(self.modelName + ".sqlite")
-    #endif
+    private lazy var storeURL: URL = self.storeDirectoryURL.appendingPathComponent(self.modelName + ".sqlite")
 
-    private init(modelName: String, storeType: String, storeDirectoryURL: NSURL) {
+    private init(modelName: String, storeType: String, storeDirectoryURL: URL) {
         self.modelName = modelName
         self.storeType = storeType
         self.storeDirectoryURL = storeDirectoryURL
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "managedObjectContextDidSaveNotification:", name: NSManagedObjectContextDidSaveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(CoreDataStack.managedObjectContextDidSaveNotification(_:)), name: NSNotification.Name.NSManagedObjectContextDidSave, object: nil)
     }
 
     //MARK: Support for managed object context access from different threads
 
     func currentContext() -> NSManagedObjectContext! {
-        if NSThread.isMainThread() {
+        if Thread.isMainThread {
             return self.managedObjectContext
         }
         // Retrieve or create new context for current thread
-        let currentThread = NSThread.currentThread()
+        let currentThread = Thread.current
         var context = currentThread.threadDictionary["CoreDataStack"] as? NSManagedObjectContext
         if (context == nil) {
             if let coordinator = self.persistentStoreCoordinator {
-                context = NSManagedObjectContext(concurrencyType: .PrivateQueueConcurrencyType)
+                context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
                 context!.persistentStoreCoordinator = coordinator
                 currentThread.threadDictionary["CoreDataStack"] = context
             }
@@ -105,7 +102,7 @@ public class CoreDataStack {
         saveContext(currentContext())
     }
 
-    internal func saveContext(context: NSManagedObjectContext!) {
+    internal func saveContext(_ context: NSManagedObjectContext!) {
         guard context.hasChanges else { return }
 
         do {
@@ -119,7 +116,7 @@ public class CoreDataStack {
     }
 
     // Merging other object contexts into the main context
-    @objc private func managedObjectContextDidSaveNotification(notification: NSNotification!) {
+    @objc private func managedObjectContextDidSaveNotification(_ notification: Notification!) {
         guard let notificationManagedObjectContext = notification.object as? NSManagedObjectContext else { return }
 
         // No need to merge the main context into itself
@@ -129,26 +126,26 @@ public class CoreDataStack {
         guard notificationManagedObjectContext.persistentStoreCoordinator == self.persistentStoreCoordinator else { return }
 
         // Make sure to perform the merge operation on the main thread
-        if (!NSThread.isMainThread()) {
-            dispatch_async(dispatch_get_main_queue()) {
+        if (!Thread.isMainThread) {
+            DispatchQueue.main.async {
                 self.managedObjectContextDidSaveNotification(notification)
             }
             return;
         }
 
         // Merge thread-related context into the main context
-        self.managedObjectContext.mergeChangesFromContextDidSaveNotification(notification)
+        self.managedObjectContext.mergeChanges(fromContextDidSave: notification)
     }
 
     public func resetDatabase() throws {
         //TODO: If the persistentStoreCoordinator had been already created, it must also be reset
-        let path = storeURL.path!
-        guard NSFileManager.defaultManager().fileExistsAtPath(path) else { return }
-        try NSFileManager.defaultManager().removeItemAtURL(storeURL)
-        try NSFileManager.defaultManager().createFileAtPath(path, contents: nil, attributes: nil)
+        let path = storeURL.path
+        guard FileManager.default.fileExists(atPath: path) else { return }
+        try FileManager.default.removeItem(at: storeURL as URL)
+        try FileManager.default.createFile(atPath: path, contents: nil, attributes: nil)
     }
 }
 
 public protocol CoreDataStackDelegate: class {
-    func coreDataStack(stack: CoreDataStack, didFailSaveWithError error: NSError)
+    func coreDataStack(_ stack: CoreDataStack, didFailSaveWithError error: NSError)
 }
