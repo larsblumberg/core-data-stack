@@ -12,7 +12,7 @@ import CoreData
 public extension NSManagedObject {
     public static var entityName: String { return (NSStringFromClass(self) as NSString).pathExtension }
 
-    private static var currentContext: NSManagedObjectContext! { return CoreDataStack.sharedInstance.currentContext() }
+    private static var currentContext: NSManagedObjectContext! { return CoreDataStack.shared.currentContext() }
 
     public static func newManagedObject() -> Self {
         return autocast(NSEntityDescription.insertNewObject(forEntityName: entityName, into: currentContext))
@@ -23,7 +23,7 @@ public extension NSManagedObject {
     }
 
     public static func allObjectsWithPredicate<T: NSManagedObject>(_ predicate: NSPredicate) -> [T] {
-        return CoreDataStack.sharedInstance.currentContext().fetchAllObjects(forEntityName: entityName, predicate: predicate) as! [T]
+        return CoreDataStack.shared.currentContext().fetchAllObjects(forEntityName: entityName, predicate: predicate) as! [T]
     }
 
     public static func objectWithPredicate(_ predicate: NSPredicate) -> Self? {
@@ -35,7 +35,7 @@ public extension NSManagedObject {
     }
 
     public static func objectWithURL(_ objectURL: URL) -> Self? {
-        if let objectID = CoreDataStack.sharedInstance.persistentStoreCoordinator.managedObjectID(forURIRepresentation: objectURL) {
+        if let objectID = CoreDataStack.shared.persistentStoreCoordinator.managedObjectID(forURIRepresentation: objectURL) {
             return objectWithID(objectID)
         } else {
             return nil
@@ -52,7 +52,7 @@ public extension NSManagedObject {
     }
 
     public func delete() {
-        CoreDataStack.sharedInstance.currentContext().delete(self)
+        CoreDataStack.shared.currentContext().delete(self)
     }
 }
 

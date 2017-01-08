@@ -18,7 +18,7 @@ public class CoreDataStack {
     #endif
     public static var storeDirectoryURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last!
 
-    public static let sharedInstance: CoreDataStack = {
+    public static let shared: CoreDataStack = {
         guard let modelName = modelName else { fatalError("CoreDataStack.modelName not set") }
         return CoreDataStack(modelName: modelName, storeType: storeType, storeDirectoryURL: storeDirectoryURL)
     }()

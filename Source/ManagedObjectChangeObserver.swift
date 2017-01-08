@@ -71,7 +71,7 @@ public class ManagedObjectChangeObserver {
     }
 
     private func observe() {
-        NotificationCenter.default.addObserver(self, selector: #selector(ManagedObjectChangeObserver.didChangeManagedObjectContext(_:)), name: NSNotification.Name.NSManagedObjectContextObjectsDidChange, object: CoreDataStack.sharedInstance.currentContext())
+        NotificationCenter.default.addObserver(self, selector: #selector(ManagedObjectChangeObserver.didChangeManagedObjectContext(_:)), name: NSNotification.Name.NSManagedObjectContextObjectsDidChange, object: CoreDataStack.shared.currentContext())
     }
 
     public func removeObserver() {
