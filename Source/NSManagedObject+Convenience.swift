@@ -11,38 +11,38 @@ import CoreData
 
 public extension NSManagedObject {
     public static var entityName: String { return (NSStringFromClass(self) as NSString).pathExtension }
-    
+
     private static var currentContext: NSManagedObjectContext! { return CoreDataStack.sharedInstance.currentContext() }
-    
-    public static func newManagedObject() -> NSManagedObject {
-        return NSEntityDescription.insertNewObject(forEntityName: entityName, into: currentContext)
+
+    public static func newManagedObject() -> Self {
+        return autocast(NSEntityDescription.insertNewObject(forEntityName: entityName, into: currentContext))
     }
-    
-    public static func allObjects() -> [NSManagedObject]! {
-        return currentContext.fetchAllObjects(forEntityName: entityName)
+
+    public static func allObjects<T: NSManagedObject>() -> [T] {
+        return currentContext.fetchAllObjects(forEntityName: entityName) as! [T]
     }
-    
-    public static func allObjectsWithPredicate(_ predicate: NSPredicate) -> [NSManagedObject]! {
-        return CoreDataStack.sharedInstance.currentContext().fetchAllObjects(forEntityName: entityName, predicate: predicate)
+
+    public static func allObjectsWithPredicate<T: NSManagedObject>(_ predicate: NSPredicate) -> [T] {
+        return CoreDataStack.sharedInstance.currentContext().fetchAllObjects(forEntityName: entityName, predicate: predicate) as! [T]
     }
-    
-    public static func objectWithPredicate(_ predicate: NSPredicate) -> NSManagedObject? {
-        return allObjectsWithPredicate(predicate).first
+
+    public static func objectWithPredicate(_ predicate: NSPredicate) -> Self? {
+        return autocast(allObjectsWithPredicate(predicate).first)
     }
-    
-    public static func objectWithID(_ objectID: NSManagedObjectID) -> NSManagedObject? {
-        return try? currentContext.existingObject(with: objectID)
+
+    public static func objectWithID(_ objectID: NSManagedObjectID) -> Self? {
+        return autocast(try? currentContext.existingObject(with: objectID))
     }
-    
-    public static func objectWithURL(_ objectURL: URL) -> NSManagedObject? {
+
+    public static func objectWithURL(_ objectURL: URL) -> Self? {
         if let objectID = CoreDataStack.sharedInstance.persistentStoreCoordinator.managedObjectID(forURIRepresentation: objectURL) {
             return objectWithID(objectID)
         } else {
             return nil
         }
     }
-    
-    public static func objectWithURLString(_ objectURLString: String) -> NSManagedObject? {
+
+    public static func objectWithURLString(_ objectURLString: String) -> Self? {
         if let objectURL = URL(string: objectURLString) {
             return objectWithURL(objectURL)
         }
@@ -50,8 +50,12 @@ public extension NSManagedObject {
             return nil
         }
     }
-    
+
     public func delete() {
         CoreDataStack.sharedInstance.currentContext().delete(self)
     }
+}
+
+private func autocast<T>(_ some: Any) -> T {
+    return some as! T
 }
