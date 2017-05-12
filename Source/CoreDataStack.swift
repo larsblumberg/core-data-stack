@@ -76,7 +76,8 @@ public class CoreDataStack {
         self.modelName = modelName
         self.storeType = storeType
         self.storeDirectoryURL = storeDirectoryURL
-        NotificationCenter.default.addObserver(self, selector: #selector(CoreDataStack.managedObjectContextDidSaveNotification(_:)), name: NSNotification.Name.NSManagedObjectContextDidSave, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.managedObjectContextDidSaveNotification(_:)), name: NSNotification.Name.NSManagedObjectContextDidSave, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.didChangeManagedObjectContext(_:)), name: NSNotification.Name.NSManagedObjectContextObjectsDidChange, object: managedObjectContext)
     }
 
     //MARK: Support for managed object context access from different threads
@@ -137,15 +138,24 @@ public class CoreDataStack {
         self.managedObjectContext.mergeChanges(fromContextDidSave: notification)
     }
 
+    @objc private func didChangeManagedObjectContext(_ notification: Notification) {
+        self.delegate?.coreDataStackDidChangeManagedObjectContext(self)
+    }
+
     public func resetDatabase() throws {
         //TODO: If the persistentStoreCoordinator had been already created, it must also be reset
         let path = storeURL.path
         guard FileManager.default.fileExists(atPath: path) else { return }
         try FileManager.default.removeItem(at: storeURL as URL)
-        try FileManager.default.createFile(atPath: path, contents: nil, attributes: nil)
+        FileManager.default.createFile(atPath: path, contents: nil, attributes: nil)
     }
 }
 
 public protocol CoreDataStackDelegate: class {
     func coreDataStack(_ stack: CoreDataStack, didFailSaveWithError error: NSError)
+    func coreDataStackDidChangeManagedObjectContext(_ stack: CoreDataStack)
+}
+
+public extension CoreDataStackDelegate {
+    func coreDataStackDidChangeManagedObjectContext(_stack: CoreDataStack) {}
 }
